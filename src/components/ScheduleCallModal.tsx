@@ -144,17 +144,22 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
         attendees: [{ email, permission: 1, attendance: 1 }], // siempre 1 (email obligatorio)
       };
 
-      const res = await fetch('/api/zoho/create-event', {
+      const res = await fetch('/.netlify/functions/zoho-create-event', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json().catch(() => ({}));
+      const text = await res.text();
+      let data: any = {};
+      try { data = JSON.parse(text); } catch {}
       if (!res.ok) {
-        const msg = data?.error?.detail ? JSON.stringify(data.error.detail) : JSON.stringify(data);
-        throw new Error(msg || 'Fallo creando evento');
+        console.error('Create event FAIL', res.status, data || text);
+        throw new Error(data?.error ? JSON.stringify(data) : text);
       }
+      // si quieres: console.log('OK', data.viewEventURL);
+      setStep('confirmation');
+
 
       setStep('confirmation');
     } catch (err) {
