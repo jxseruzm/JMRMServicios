@@ -38,11 +38,19 @@ export const handler: Handler = async (event) => {
       return { statusCode: 405, headers, body: JSON.stringify({ error: 'Only POST' }) };
     }
 
-    const { title, description, startISO, endISO, timezone = 'Europe/Madrid', attendees = [], calendar_uid } =
-      JSON.parse(event.body || '{}');
+    const {
+      title, description, startISO, endISO, timezone = 'Europe/Madrid',
+      attendees = [], calendar_uid,
+    } = JSON.parse(event.body || '{}');
 
     if (!title || !startISO || !endISO) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Faltan campos: title/startISO/endISO' }) };
+    }
+
+    // Normaliza asistentes
+    const attendeesArr = Array.isArray(attendees) ? attendees.filter(Boolean) : [];
+    if (attendeesArr.length > 0 && (attendeesArr.length < 1 || attendeesArr.length > 50)) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'CREATE_FAIL', detail: { message: 'attendees array size out of range [1-50]' } }) };
     }
 
     const token = await getAccessToken();
@@ -59,21 +67,22 @@ export const handler: Handler = async (event) => {
     }
 
     // 2) Create event
-    const eventdata = {
+    const base = {
       title,
       description,
       dateandtime: { timezone, start: toZohoUtc(startISO), end: toZohoUtc(endISO) },
-      attendees, // [{email, permission:1, attendance:1}]
       reminders: [{ action: 'popup', minutes: 15 }],
       calendar_alarm: true,
-    };
+    } as any;
 
-    const url = `${API}/calendars/${calUid}/events?eventdata=${encodeURIComponent(JSON.stringify(eventdata))}`;
+    if (attendeesArr.length) base.attendees = attendeesArr;
+
+    const url = `${API}/calendars/${calUid}/events?eventdata=${encodeURIComponent(JSON.stringify(base))}`;
     const r2 = await fetch(url, { method: 'POST', headers: { Authorization: `Zoho-oauthtoken ${token}` } });
     const j2 = await r2.json();
     if (!r2.ok) return { statusCode: r2.status, headers, body: JSON.stringify({ error: 'CREATE_FAIL', detail: j2 }) };
 
-    return { statusCode: 200, headers, body: JSON.stringify(j2) }; // suele incluir viewEventURL
+    return { statusCode: 200, headers, body: JSON.stringify(j2) };
   } catch (e: any) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: 'SERVER_ERROR', detail: e?.message || e }) };
   }

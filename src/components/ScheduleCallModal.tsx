@@ -9,22 +9,11 @@ import { Label } from './ui/label';
 import { Card } from './ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
-interface ScheduleCallModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
+interface ScheduleCallModalProps { isOpen: boolean; onClose: () => void; }
 type Step = 'select-date' | 'fill-form' | 'confirmation';
-
 interface TimeSlot { id: string; time: string; available: boolean; }
-
-interface WeekDate {
-  date: string; day: number; month: string; weekday: string; fullWeekday: string;
-  isWeekend: boolean; isPast: boolean; isAvailable: boolean;
-}
-
+interface WeekDate { date: string; day: number; month: string; weekday: string; fullWeekday: string; isWeekend: boolean; isPast: boolean; isAvailable: boolean; }
 type ServiceCategoryValue = 'data-engineering' | 'automation' | 'ai-ml' | 'consulta-general';
-
 interface ServiceCategory { value: ServiceCategoryValue; label: string; }
 interface ServiceItem { value: string; label: string; }
 
@@ -74,7 +63,6 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
   const getAvailableServices = (): ServiceItem[] =>
     formData.category ? servicesByCategory[formData.category] : [];
 
-  // Semana actual con offset
   const generateCurrentWeek = (weekOffset: number = 0): WeekDate[] => {
     const today = new Date();
     const todayYMD = new Date(today.toDateString());
@@ -133,57 +121,48 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
     if (selectedDate && selectedTime) setStep('fill-form');
   };
 
-// Si ya sabes el UID de tu calendario, pónlo aquí.
-// Si no, deja '' y la función serverless intentará el primario.
-const CALENDAR_UID = 'b6d05b30669242deaa1653441a76abce'; // o ''
+  const CALENDAR_UID = 'b6d05b30669242deaa1653441a76abce';
 
-const handleFormSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!selectedDate || !selectedTime) return;
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedDate || !selectedTime) return;
+    const email = formData.email.trim();
+    if (!email) return; // email obligatorio (el input ya es required, esto es doble check)
 
-  setIsSubmitting(true);
-  try {
-    const start = new Date(`${selectedDate}T${selectedTime}:00`);
-    const end = new Date(start.getTime() + 30 * 60 * 1000);
+    setIsSubmitting(true);
+    try {
+      const start = new Date(`${selectedDate}T${selectedTime}:00`);
+      const end = new Date(start.getTime() + 30 * 60 * 1000);
 
-    const payload: any = {
-      title: 'Consulta de datos (30 min)',
-      description: `${formData.name} – ${formData.category || 'General'}/${formData.service || 'Consulta'}\n${formData.notes || ''}`,
-      startISO: start.toISOString(),
-      endISO: end.toISOString(),
-      timezone: 'Europe/Madrid',
-      attendees: formData.email ? [{ email: formData.email, permission: 1, attendance: 1 }] : [],
-    };
-    if (CALENDAR_UID) payload.calendar_uid = CALENDAR_UID;
+      const payload = {
+        title: 'Consulta de datos (30 min)',
+        description: `${formData.name} – ${formData.category || 'General'}/${formData.service || 'Consulta'}\n${formData.notes || ''}`,
+        startISO: start.toISOString(),
+        endISO: end.toISOString(),
+        timezone: 'Europe/Madrid',
+        calendar_uid: CALENDAR_UID,
+        attendees: [{ email, permission: 1, attendance: 1 }], // siempre 1 (email obligatorio)
+      };
 
-    const res = await fetch('/api/zoho/create-event', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+      const res = await fetch('/api/zoho/create-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const msg =
-        data?.error?.detail
-          ? JSON.stringify(data.error.detail)
-          : typeof data === 'object' && Object.keys(data).length
-          ? JSON.stringify(data)
-          : await res.text();
-      throw new Error(msg || 'Fallo creando evento');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = data?.error?.detail ? JSON.stringify(data.error.detail) : JSON.stringify(data);
+        throw new Error(msg || 'Fallo creando evento');
+      }
+
+      setStep('confirmation');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // data puede incluir viewEventURL
-    // console.log('Evento creado:', data);
-    setStep('confirmation');
-  } catch (err) {
-    console.error(err);
-    // TODO: aquí puedes mostrar un toast/alert con (err as Error).message
-  } finally {
-    setIsSubmitting(false);
-  }
-};
-
+  };
 
   const handleClose = () => {
     setStep('select-date');
@@ -417,7 +396,7 @@ const handleFormSubmit = async (e: React.FormEvent) => {
                         <Button
                           type="submit"
                           className="bg-gradient-to-r from-blue-600 to-purple-600 w-full sm:w-auto"
-                          disabled={isSubmitting || !formData.category || !formData.service}
+                          disabled={isSubmitting || !formData.category || !formData.service || !formData.email.trim()}
                         >
                           {isSubmitting ? 'Agendando…' : 'Agendar Llamada'}
                         </Button>
