@@ -65,16 +65,31 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
   const [busyLoading, setBusyLoading] = useState(false);
   const CALENDAR_UID = 'b6d05b30669242deaa1653441a76abce';
 
-  const parseZohoLocal = (s: string) => {
-    const m = s?.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})([+-]\d{4}|Z)$/);
-    if (!m) return new Date(NaN);
-    const [, Y, Mo, D, H, Mi, S, off] = m;
-    const iso = `${Y}-${Mo}-${D}T${H}:${Mi}:${S}${off === 'Z' ? 'Z' : off.replace(/([+-])(\d{2})(\d{2})/, '$1$2:$3')}`;
-    return new Date(iso);
+  // Parser robusto: acepta 20251012T120000+0200 | ...Z | ISO normal
+  const parseAnyDate = (input: unknown): Date => {
+    if (!input) return new Date(NaN);
+
+    if (typeof input === 'string' && /^\d{8}T\d{6}(Z|[+-]\d{4})$/.test(input)) {
+      const iso = input.replace(
+        /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z|[+-]\d{4})$/,
+        (_m, Y, Mo, D, H, Mi, S, off) =>
+          `${Y}-${Mo}-${D}T${H}:${Mi}:${S}${off === 'Z' ? 'Z' : off.replace(/([+-])(\d{2})(\d{2})/, '$1$2:$3')}`
+      );
+      return new Date(iso);
+    }
+
+    if (typeof input === 'string' && !Number.isNaN(Date.parse(input))) {
+      return new Date(input);
+    }
+
+    return new Date(NaN);
   };
 
+  // margen para evitar “bailar” en frontera de segundos
+  const OVERLAP_EPS_MS = 60 * 1000;
   const overlaps = (aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) =>
-    aStart < bEnd && bStart < aEnd;
+    aStart.getTime() < bEnd.getTime() - OVERLAP_EPS_MS &&
+    bStart.getTime() < aEnd.getTime() - OVERLAP_EPS_MS;
 
   // slots base
   const baseSlots = useMemo<TimeSlot[]>(() => ([
@@ -83,7 +98,7 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
     { id: '18:00', time: '18:00', available: true },
   ]), []);
 
-  // carga disponibilidad del día
+  // carga disponibilidad del día (usa busy; si no, cae a events[].dateandtime)
   useEffect(() => {
     const loadBusy = async () => {
       setBusyIntervals([]);
@@ -102,9 +117,24 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
           setBusyLoading(false);
           return;
         }
-        const intervals = (data.busy || [])
-          .map((b: any) => ({ start: parseZohoLocal(b.start), end: parseZohoLocal(b.end) }))
-          .filter((x: any) => !Number.isNaN(x.start.valueOf()) && !Number.isNaN(x.end.valueOf()));
+
+        let intervals: Array<{ start: Date; end: Date }> = [];
+
+        if (Array.isArray(data.busy)) {
+          intervals = (data.busy as Array<{ start: string; end: string }>)
+            .map((b): { start: Date; end: Date } => ({ start: parseAnyDate(b.start), end: parseAnyDate(b.end) }))
+            .filter((x: { start: Date; end: Date }) => !Number.isNaN(x.start.valueOf()) && !Number.isNaN(x.end.valueOf()));
+        }
+
+        if (!intervals.length && Array.isArray(data.events)) {
+          intervals = (data.events as Array<{ dateandtime?: { start: string; end: string }; dateAndTime?: { start: string; end: string } }>)
+            .map((ev): { start: Date; end: Date } => {
+              const dt = ev?.dateandtime ?? ev?.dateAndTime ?? ({} as { start?: string; end?: string });
+              return { start: parseAnyDate(dt.start), end: parseAnyDate(dt.end) };
+            })
+            .filter((x: { start: Date; end: Date }) => !Number.isNaN(x.start.valueOf()) && !Number.isNaN(x.end.valueOf()));
+        }
+
         setBusyIntervals(intervals);
       } catch (e) {
         console.error(e);
@@ -113,6 +143,7 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
       }
     };
     loadBusy();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
 
   // recalcula slots con busy
@@ -120,7 +151,7 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
     if (!selectedDate) return [];
     const d = new Date(selectedDate);
     const isSaturday = d.getDay() === 6;
-    const base = isSaturday ? [{ id: '12:00', time: '12:00', available: true }] : baseSlots;
+    const base = isSaturday ? [{ id: '12:00', time: '12:00', available: true }] as TimeSlot[] : baseSlots;
 
     return base.map((slot) => {
       const start = new Date(`${selectedDate}T${slot.time}:00`);
@@ -136,7 +167,7 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
     const slots = getAvailableTimeSlots();
     const chosen = slots.find((s) => s.time === selectedTime);
     if (chosen && !chosen.available) setSelectedTime('');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busyIntervals]);
 
   const getAvailableServices = (): ServiceItem[] =>
@@ -154,7 +185,7 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
     for (let i = 0; i < 6; i++) {
       const currentDate = new Date(startOfWeek);
       currentDate.setDate(startOfWeek.getDate() + i);
-      const isPast = currentDate < new Date(today.toDateString());
+      const isPast = currentDate < todayYMD;
       weekDates.push({
         date: currentDate.toISOString().split('T')[0],
         day: currentDate.getDate(),
@@ -218,11 +249,11 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
       });
 
       const text = await res.text();
-      let data: any = {};
+      let data: unknown = {};
       try { data = JSON.parse(text); } catch {}
       if (!res.ok) {
         console.error('Create event FAIL', res.status, data || text);
-        throw new Error(data?.error ? JSON.stringify(data) : text);
+        throw new Error(typeof data === 'object' ? JSON.stringify(data) : text);
       }
       setStep('confirmation');
     } catch (err) {
@@ -533,7 +564,7 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
 
                     <Button
                       onClick={handleClose}
-                      className="w-full h-14 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 relative overflow-hidden group"
+                      className="w-full h-14 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duración-300 transform hover:scale-105 relative overflow-hidden group"
                     >
                       <motion.div
                         className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
