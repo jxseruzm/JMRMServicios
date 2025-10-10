@@ -133,36 +133,57 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
     if (selectedDate && selectedTime) setStep('fill-form');
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedDate || !selectedTime) return;
+// Si ya sabes el UID de tu calendario, pónlo aquí.
+// Si no, deja '' y la función serverless intentará el primario.
+const CALENDAR_UID = 'b6d05b30669242deaa1653441a76abce'; // o ''
 
-    setIsSubmitting(true);
-    try {
-      const start = new Date(`${selectedDate}T${selectedTime}:00`);
-      const end = new Date(start.getTime() + 30 * 60 * 1000);
+const handleFormSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!selectedDate || !selectedTime) return;
 
-      const res = await fetch('/api/zoho/create-event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: 'Consulta de datos (30 min)',
-          description: `${formData.name} – ${formData.category || 'General'}/${formData.service || 'Consulta'}\n${formData.notes || ''}`,
-          startISO: start.toISOString(),
-          endISO: end.toISOString(),
-          timezone: 'Europe/Madrid',
-          attendees: formData.email ? [{ email: formData.email, permission: 1, attendance: 1 }] : [],
-        }),
-      });
+  setIsSubmitting(true);
+  try {
+    const start = new Date(`${selectedDate}T${selectedTime}:00`);
+    const end = new Date(start.getTime() + 30 * 60 * 1000);
 
-      if (!res.ok) throw new Error(await res.text());
-      setStep('confirmation');
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSubmitting(false);
+    const payload: any = {
+      title: 'Consulta de datos (30 min)',
+      description: `${formData.name} – ${formData.category || 'General'}/${formData.service || 'Consulta'}\n${formData.notes || ''}`,
+      startISO: start.toISOString(),
+      endISO: end.toISOString(),
+      timezone: 'Europe/Madrid',
+      attendees: formData.email ? [{ email: formData.email, permission: 1, attendance: 1 }] : [],
+    };
+    if (CALENDAR_UID) payload.calendar_uid = CALENDAR_UID;
+
+    const res = await fetch('/api/zoho/create-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg =
+        data?.error?.detail
+          ? JSON.stringify(data.error.detail)
+          : typeof data === 'object' && Object.keys(data).length
+          ? JSON.stringify(data)
+          : await res.text();
+      throw new Error(msg || 'Fallo creando evento');
     }
-  };
+
+    // data puede incluir viewEventURL
+    // console.log('Evento creado:', data);
+    setStep('confirmation');
+  } catch (err) {
+    console.error(err);
+    // TODO: aquí puedes mostrar un toast/alert con (err as Error).message
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   const handleClose = () => {
     setStep('select-date');
