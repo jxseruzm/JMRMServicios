@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  
+  <!-- Home page -->
+  <url>
+    <loc>https://joseruz-portfolio.com/</loc>
+    <lastmod>2024-10-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="es" href="https://joseruz-portfolio.com/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://joseruz-portfolio.com/?lang=en" />
+  </url>
+  
+  <!-- About section -->
+  <url>
+    <loc>https://joseruz-portfolio.com/#sobre-mi</loc>
+    <lastmod>2024-10-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="es" href="https://joseruz-portfolio.com/#sobre-mi" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://joseruz-portfolio.com/?lang=en#sobre-mi" />
+  </url>
+  
+  <!-- Services section -->
+  <url>
+    <loc>https://joseruz-portfolio.com/#servicios</loc>
+    <lastmod>2024-10-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="es" href="https://joseruz-portfolio.com/#servicios" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://joseruz-portfolio.com/?lang=en#servicios" />
+  </url>
+  
+  <!-- Skills section -->
+  <url>
+    <loc>https://joseruz-portfolio.com/#habilidades</loc>
+    <lastmod>2024-10-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="es" href="https://joseruz-portfolio.com/#habilidades" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://joseruz-portfolio.com/?lang=en#habilidades" />
+  </url>
+  
+  <!-- Projects section -->
+  <url>
+    <loc>https://joseruz-portfolio.com/#proyectos</loc>
+    <lastmod>2024-10-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="es" href="https://joseruz-portfolio.com/#proyectos" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://joseruz-portfolio.com/?lang=en#proyectos" />
+  </url>
+  
+  <!-- Experience section -->
+  <url>
+    <loc>https://joseruz-portfolio.com/#experiencia</loc>
+    <lastmod>2024-10-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="es" href="https://joseruz-portfolio.com/#experiencia" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://joseruz-portfolio.com/?lang=en#experiencia" />
+  </url>
+  
+  <!-- Contact section -->
+  <url>
+    <loc>https://joseruz-portfolio.com/#contacto</loc>
+    <lastmod>2024-10-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="es" href="https://joseruz-portfolio.com/#contacto" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://joseruz-portfolio.com/?lang=en#contacto" />
+  </url>
+  
+</urlset>
