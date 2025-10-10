@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Calendar, Clock, User, MessageCircle, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
@@ -60,6 +60,52 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
     category: '' | ServiceCategoryValue; service: string; notes: string;
   }>({ name: '', email: '', phone: '', company: '', category: '', service: '', notes: '' });
 
+  // ---- NUEVO: estados y utilidades para horas ocupadas ----
+  const [busyIntervals, setBusyIntervals] = useState<Array<{ start: Date; end: Date }>>([]);
+
+  // Convierte '20251012T120000+0200' o '...Z' a Date
+  const parseZohoLocal = (s: string) => {
+    const m = s?.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})([+-]\d{4}|Z)$/);
+    if (!m) return new Date(NaN);
+    const [, Y, Mo, D, H, Mi, S, off] = m;
+    const iso = `${Y}-${Mo}-${D}T${H}:${Mi}:${S}${off === 'Z' ? 'Z' : off.replace(/([+-])(\d{2})(\d{2})/, '$1$2:$3')}`;
+    return new Date(iso);
+  };
+
+  const overlaps = (aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) =>
+    aStart < bEnd && bStart < aEnd;
+
+  const CALENDAR_UID = 'b6d05b30669242deaa1653441a76abce';
+
+  // Cuando cambia la fecha, pedimos eventos del día para bloquear horas
+  useEffect(() => {
+    const loadBusy = async () => {
+      setBusyIntervals([]);
+      if (!selectedDate) return;
+      try {
+        const res = await fetch('/.netlify/functions/zoho-day-events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dateYMD: selectedDate, calendar_uid: CALENDAR_UID }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          console.error('zoho-day-events FAIL', res.status, data);
+          return;
+        }
+        const intervals = (data.busy || [])
+          .map((b: any) => ({ start: parseZohoLocal(b.start), end: parseZohoLocal(b.end) }))
+          .filter((x: any) => !Number.isNaN(x.start.valueOf()) && !Number.isNaN(x.end.valueOf()));
+        setBusyIntervals(intervals);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    loadBusy();
+  }, [selectedDate]);
+
+  // ---------------------------------------------------------
+
   const getAvailableServices = (): ServiceItem[] =>
     formData.category ? servicesByCategory[formData.category] : [];
 
@@ -108,26 +154,32 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
     if (!selectedDate) return [];
     const d = new Date(selectedDate);
     const isSaturday = d.getDay() === 6;
-    return isSaturday
+    const base: TimeSlot[] = isSaturday
       ? [{ id: '12:00', time: '12:00', available: true }]
       : [
           { id: '12:00', time: '12:00', available: true },
           { id: '13:00', time: '13:00', available: true },
           { id: '18:00', time: '18:00', available: true },
         ];
+
+    // Bloquea slots que se solapen con eventos (30 min)
+    return base.map((slot) => {
+      const start = new Date(`${selectedDate}T${slot.time}:00`);
+      const end = new Date(start.getTime() + 30 * 60 * 1000);
+      const isBusy = busyIntervals.some((b) => overlaps(start, end, b.start, b.end));
+      return { ...slot, available: slot.available && !isBusy };
+    });
   };
 
   const handleDateTimeSelect = () => {
     if (selectedDate && selectedTime) setStep('fill-form');
   };
 
-  const CALENDAR_UID = 'b6d05b30669242deaa1653441a76abce';
-
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDate || !selectedTime) return;
     const email = formData.email.trim();
-    if (!email) return; // email obligatorio (el input ya es required, esto es doble check)
+    if (!email) return; // email obligatorio
 
     setIsSubmitting(true);
     try {
@@ -141,7 +193,7 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
         endISO: end.toISOString(),
         timezone: 'Europe/Madrid',
         calendar_uid: CALENDAR_UID,
-        attendees: [{ email, permission: 1, attendance: 1 }], // siempre 1 (email obligatorio)
+        attendees: [{ email, permission: 1, attendance: 1 }],
       };
 
       const res = await fetch('/.netlify/functions/zoho-create-event', {
@@ -157,9 +209,6 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
         console.error('Create event FAIL', res.status, data || text);
         throw new Error(data?.error ? JSON.stringify(data) : text);
       }
-      // si quieres: console.log('OK', data.viewEventURL);
-      setStep('confirmation');
-
 
       setStep('confirmation');
     } catch (err) {

@@ -7,6 +7,11 @@
   from = "/api/zoho/create-event"
   to = "/.netlify/functions/zoho-create-event"
   status = 200
+  
+[[redirects]]
+  from = "/api/zoho/day-events"
+  to = "/.netlify/functions/zoho-day-events"
+  status = 200
 
 # Callback OAuth → función serverless
 [[redirects]]
