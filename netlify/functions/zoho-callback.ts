@@ -32,13 +32,13 @@ export const handler: Handler = async (event) => {
 
     // TODO: guarda tokens de forma segura (Vault, DB, etc.)
     // Por ahora, muéstralos 1 sola vez y luego desactiva esta impresión.
+    //<pre>${JSON.stringify(data, null, 2)}</pre>
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
       body: `
         <h1>Autorización completada ✅</h1>
         <p>Copia estos tokens y guárdalos de forma segura, luego elimina esta salida de la función.</p>
-        <pre>${JSON.stringify(data, null, 2)}</pre>
       `,
     };
   } catch (e: any) {
