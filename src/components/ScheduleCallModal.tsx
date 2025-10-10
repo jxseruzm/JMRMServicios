@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Calendar, Clock, User, Mail, Phone, MessageCircle, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, User, MessageCircle, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -9,8 +9,6 @@ import { Label } from './ui/label';
 import { Card } from './ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
-const [isSubmitting, setIsSubmitting] = useState(false);
-
 interface ScheduleCallModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -18,34 +16,17 @@ interface ScheduleCallModalProps {
 
 type Step = 'select-date' | 'fill-form' | 'confirmation';
 
-interface TimeSlot {
-  id: string;
-  time: string;
-  available: boolean;
-}
+interface TimeSlot { id: string; time: string; available: boolean; }
 
 interface WeekDate {
-  date: string;
-  day: number;
-  month: string;
-  weekday: string;
-  fullWeekday: string;
-  isWeekend: boolean;
-  isPast: boolean;
-  isAvailable: boolean;
+  date: string; day: number; month: string; weekday: string; fullWeekday: string;
+  isWeekend: boolean; isPast: boolean; isAvailable: boolean;
 }
 
 type ServiceCategoryValue = 'data-engineering' | 'automation' | 'ai-ml' | 'consulta-general';
 
-interface ServiceCategory {
-  value: ServiceCategoryValue;
-  label: string;
-}
-
-interface ServiceItem {
-  value: string;
-  label: string;
-}
+interface ServiceCategory { value: ServiceCategoryValue; label: string; }
+interface ServiceItem { value: string; label: string; }
 
 const serviceCategories: ServiceCategory[] = [
   { value: 'data-engineering', label: 'Data Engineering' },
@@ -83,53 +64,37 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [currentWeekOffset, setCurrentWeekOffset] = useState<number>(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<{
-    name: string;
-    email: string;
-    phone: string;
-    company: string;
-    category: '' | ServiceCategoryValue;
-    service: string;
-    notes: string;
-  }>({
-    name: '',
-    email: '',
-    phone: '',
-    company: '',
-    category: '',
-    service: '',
-    notes: '',
-  });
+    name: string; email: string; phone: string; company: string;
+    category: '' | ServiceCategoryValue; service: string; notes: string;
+  }>({ name: '', email: '', phone: '', company: '', category: '', service: '', notes: '' });
 
-  const getAvailableServices = (): ServiceItem[] => {
-    return formData.category ? servicesByCategory[formData.category] : [];
-  };
+  const getAvailableServices = (): ServiceItem[] =>
+    formData.category ? servicesByCategory[formData.category] : [];
 
-  // Generar lunes de la semana con offset
+  // Semana actual con offset
   const generateCurrentWeek = (weekOffset: number = 0): WeekDate[] => {
     const today = new Date();
-    const todayYMD = new Date(today.toDateString()); // normaliza a 00:00
+    const todayYMD = new Date(today.toDateString());
     const startOfWeek = new Date(todayYMD);
-    const dow = todayYMD.getDay(); // 0 dom .. 1 lun
+    const dow = todayYMD.getDay();
     const deltaToMonday = dow === 0 ? -6 : 1 - dow;
     startOfWeek.setDate(startOfWeek.getDate() + deltaToMonday + weekOffset * 7);
 
     const weekDates: WeekDate[] = [];
-    for (let i = 0; i < 6; i++) { // lunes a sábado
+    for (let i = 0; i < 6; i++) {
       const currentDate = new Date(startOfWeek);
       currentDate.setDate(startOfWeek.getDate() + i);
-
-      const weekdayShort = currentDate.toLocaleDateString('es-ES', { weekday: 'short' });
       const isPast = currentDate < todayYMD;
-
       weekDates.push({
         date: currentDate.toISOString().split('T')[0],
         day: currentDate.getDate(),
         month: currentDate.toLocaleDateString('es-ES', { month: 'short' }),
-        weekday: weekdayShort,
+        weekday: currentDate.toLocaleDateString('es-ES', { weekday: 'short' }),
         fullWeekday: currentDate.toLocaleDateString('es-ES', { weekday: 'long' }),
-        isWeekend: currentDate.getDay() === 6, // sábado
+        isWeekend: currentDate.getDay() === 6,
         isPast,
         isAvailable: !isPast,
       });
@@ -168,59 +133,43 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
     if (selectedDate && selectedTime) setStep('fill-form');
   };
 
-const handleFormSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedDate || !selectedTime) return;
 
-  if (!selectedDate || !selectedTime) {
-    // si usas toast, muestra error aquí
-    return;
-  }
+    setIsSubmitting(true);
+    try {
+      const start = new Date(`${selectedDate}T${selectedTime}:00`);
+      const end = new Date(start.getTime() + 30 * 60 * 1000);
 
-  setIsSubmitting?.(true);
-  try {
-    const start = new Date(`${selectedDate}T${selectedTime}:00`);
-    const end = new Date(start.getTime() + 30 * 60 * 1000); // 30 min
+      const res = await fetch('/api/zoho/create-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: 'Consulta de datos (30 min)',
+          description: `${formData.name} – ${formData.category || 'General'}/${formData.service || 'Consulta'}\n${formData.notes || ''}`,
+          startISO: start.toISOString(),
+          endISO: end.toISOString(),
+          timezone: 'Europe/Madrid',
+          attendees: formData.email ? [{ email: formData.email, permission: 1, attendance: 1 }] : [],
+        }),
+      });
 
-    const res = await fetch('/api/zoho/create-event', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: 'Consulta de datos (30 min)',
-        description: `${formData.name} – ${formData.category || 'General'}/${formData.service || 'Consulta'}\n${formData.notes || ''}`,
-        startISO: start.toISOString(),
-        endISO: end.toISOString(),
-        timezone: 'Europe/Madrid',
-        attendees: formData.email ? [{ email: formData.email, permission: 1, attendance: 1 }] : [],
-      }),
-    });
-
-    if (!res.ok) throw new Error(await res.text());
-    // opcional: const data = await res.json(); // data.viewEventURL
-
-    setStep('confirmation');
-  } catch (err) {
-    // muestra error (toast o similar)
-    console.error(err);
-  } finally {
-    setIsSubmitting?.(false);
-  }
-};
-
+      if (!res.ok) throw new Error(await res.text());
+      setStep('confirmation');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleClose = () => {
     setStep('select-date');
     setSelectedDate('');
     setSelectedTime('');
     setCurrentWeekOffset(0);
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      company: '',
-      category: '',
-      service: '',
-      notes: '',
-    });
+    setFormData({ name: '', email: '', phone: '', company: '', category: '', service: '', notes: '' });
     onClose();
   };
 
@@ -233,14 +182,12 @@ const handleFormSubmit = async (e: React.FormEvent) => {
         </DialogDescription>
 
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.3 }} className="relative">
-          {/* Header */}
           <div className="p-3 sm:p-4 lg:p-6 border-b">
             <div>
               <h2 className="text-lg sm:text-xl lg:text-2xl">Agendar Consulta Gratuita</h2>
               <p className="text-muted-foreground mt-1 text-sm sm:text-base">Charlemos sobre tu proyecto de datos - 30 minutos gratis</p>
             </div>
 
-            {/* Progreso */}
             <div className="flex items-center mt-4 sm:mt-6 space-x-1 sm:space-x-2 overflow-x-auto">
               {['Fecha y hora', 'Información', 'Confirmación'].map((stepName, index) => {
                 const order: Step[] = ['select-date', 'fill-form', 'confirmation'];
@@ -288,7 +235,7 @@ const handleFormSubmit = async (e: React.FormEvent) => {
                       </div>
 
                       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
-                        {currentWeekDates.map((date) => (
+                        {currentWeekDates.map((date: WeekDate) => (
                           <Button
                             key={date.date}
                             variant={selectedDate === date.date ? 'default' : 'outline'}
@@ -318,7 +265,7 @@ const handleFormSubmit = async (e: React.FormEvent) => {
                           Selecciona una hora
                         </h3>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-                          {getAvailableTimeSlots().map((slot) => (
+                          {getAvailableTimeSlots().map((slot: TimeSlot) => (
                             <Button
                               key={slot.id}
                               variant="outline"
@@ -334,16 +281,6 @@ const handleFormSubmit = async (e: React.FormEvent) => {
                               }`}
                             >
                               <span className={selectedTime === slot.time ? 'font-semibold text-white' : ''}>{slot.time}</span>
-                              {selectedTime === slot.time && (
-                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                                  <CheckCircle className="h-4 w-4 text-white" />
-                                </motion.div>
-                              )}
-                              {!slot.available && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-muted/50 rounded-md">
-                                  <span className="text-xs text-muted-foreground">No disponible</span>
-                                </div>
-                              )}
                             </Button>
                           ))}
                         </div>
@@ -410,7 +347,7 @@ const handleFormSubmit = async (e: React.FormEvent) => {
                               <SelectValue placeholder="Selecciona categoría" />
                             </SelectTrigger>
                             <SelectContent>
-                              {serviceCategories.map((category) => (
+                              {serviceCategories.map((category: ServiceCategory) => (
                                 <SelectItem key={category.value} value={category.value}>
                                   {category.label}
                                 </SelectItem>
@@ -423,7 +360,7 @@ const handleFormSubmit = async (e: React.FormEvent) => {
                           <Label htmlFor="modal-service">Servicio específico *</Label>
                           <Select
                             value={formData.service}
-                            onValueChange={(value) => setFormData({ ...formData, service: value })}
+                            onValueChange={(value: string) => setFormData({ ...formData, service: value })}
                             disabled={!formData.category}
                             required
                           >
@@ -431,7 +368,7 @@ const handleFormSubmit = async (e: React.FormEvent) => {
                               <SelectValue placeholder={!formData.category ? 'Primero selecciona categoría' : 'Selecciona servicio'} />
                             </SelectTrigger>
                             <SelectContent>
-                              {getAvailableServices().map((service) => (
+                              {getAvailableServices().map((service: ServiceItem) => (
                                 <SelectItem key={service.value} value={service.value}>
                                   {service.label}
                                 </SelectItem>
@@ -456,8 +393,12 @@ const handleFormSubmit = async (e: React.FormEvent) => {
                         <Button type="button" variant="outline" onClick={() => setStep('select-date')} className="w-full sm:w-auto">
                           Volver
                         </Button>
-                        <Button type="submit" className="bg-gradient-to-r from-blue-600 to-purple-600 w-full sm:w-auto" disabled={!formData.category || !formData.service}>
-                          Agendar Llamada
+                        <Button
+                          type="submit"
+                          className="bg-gradient-to-r from-blue-600 to-purple-600 w-full sm:w-auto"
+                          disabled={isSubmitting || !formData.category || !formData.service}
+                        >
+                          {isSubmitting ? 'Agendando…' : 'Agendar Llamada'}
                         </Button>
                       </div>
                     </form>
