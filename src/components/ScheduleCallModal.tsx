@@ -113,28 +113,33 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
     const today = new Date();
     const todayYMD = new Date(today.toDateString());
     const startOfWeek = new Date(todayYMD);
-    const dow = todayYMD.getDay();
+    const dow = todayYMD.getDay(); // 0=dom, 1=lun...
     const deltaToMonday = dow === 0 ? -6 : 1 - dow;
     startOfWeek.setDate(startOfWeek.getDate() + deltaToMonday + weekOffset * 7);
 
     const weekDates: WeekDate[] = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 6; i++) { // lun–sáb
       const currentDate = new Date(startOfWeek);
       currentDate.setDate(startOfWeek.getDate() + i);
+
+      const isSaturday = currentDate.getDay() === 6;
       const isPast = currentDate < todayYMD;
+
       weekDates.push({
         date: currentDate.toISOString().split('T')[0],
         day: currentDate.getDate(),
         month: currentDate.toLocaleDateString('es-ES', { month: 'short' }),
         weekday: currentDate.toLocaleDateString('es-ES', { weekday: 'short' }),
         fullWeekday: currentDate.toLocaleDateString('es-ES', { weekday: 'long' }),
-        isWeekend: false,
+        isWeekend: isSaturday,
         isPast,
-        isAvailable: !isPast,
+        // 👇 sábado siempre deshabilitado
+        isAvailable: !isPast && !isSaturday,
       });
     }
     return weekDates;
   };
+
 
   const currentWeekDates = generateCurrentWeek(currentWeekOffset);
 
@@ -157,6 +162,8 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
   // Calcula los slots disponibles (30 min) y marca ocupados según busyIntervals
   const getAvailableTimeSlots = (): TimeSlot[] => {
     if (!selectedDate) return [];
+    const d = new Date(selectedDate);
+    if (d.getDay() === 6) return [];
 
     // base de horas
     const base: TimeSlot[] = [      
