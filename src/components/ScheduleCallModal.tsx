@@ -149,19 +149,33 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
     return `${firstDay.day} ${firstDay.month} - ${lastDay.day} ${lastDay.month}`;
   };
 
-  const getAvailableTimeSlots = () => {
+  // Opcional: resetea la hora seleccionada al cambiar de fecha
+  useEffect(() => {
+    setSelectedTime('');
+  }, [selectedDate]);
+
+  // Calcula los slots disponibles (30 min) y marca ocupados según busyIntervals
+  const getAvailableTimeSlots = (): TimeSlot[] => {
     if (!selectedDate) return [];
-    const d = new Date(selectedDate);[
+
+    // base de horas
+    const base: TimeSlot[] = [      
       { id: '12:00', time: '12:00', available: true },
-      { id: '12:00', time: '12:00', available: true },
-      { id: '13:00', time: '13:00', available: true },
       { id: '13:00', time: '13:00', available: true },
       { id: '14:00', time: '14:00', available: false },
       { id: '15:00', time: '15:00', available: false },
       { id: '16:00', time: '16:00', available: false },
       { id: '17:00', time: '17:00', available: false },
       { id: '18:00', time: '18:00', available: true }
-        ];
+    ];
+
+    // Marca como no disponibles los que solapan con eventos
+    return base.map((slot) => {
+      const start = new Date(`${selectedDate}T${slot.time}:00`);
+      const end = new Date(start.getTime() + 30 * 60 * 1000);
+      const isBusy = busyIntervals.some((b) => overlaps(start, end, b.start, b.end));
+      return { ...slot, available: slot.available && !isBusy };
+    });
   };
 
   const handleDateTimeSelect = () => {
@@ -311,6 +325,28 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
                           <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                           Selecciona una hora
                         </h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                        {getAvailableTimeSlots().map((slot) => (
+                          <Button
+                            key={slot.id}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedTime(slot.time)}
+                            disabled={!slot.available}
+                            className={`relative h-12 flex items-center justify-center transition-all duration-300 ${
+                              !slot.available
+                                ? 'opacity-40 cursor-not-allowed bg-muted'
+                                : selectedTime === slot.time
+                                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white border-transparent shadow-lg scale-105 ring-2 ring-blue-500/20'
+                                : 'hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-300 hover:scale-102 hover:shadow-md'
+                            }`}
+                          >
+                            <span className={selectedTime === slot.time ? 'font-semibold text-white' : ''}>
+                              {slot.time}
+                            </span>
+                          </Button>
+                        ))}
+                      </div>
                       </motion.div>
                     )}
 
