@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Calendar, Clock, User, MessageCircle, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
@@ -60,11 +60,10 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
     category: '' | ServiceCategoryValue; service: string; notes: string;
   }>({ name: '', email: '', phone: '', company: '', category: '', service: '', notes: '' });
 
-  // ---- disponibilidad (busy) ----
+  // ---- NUEVO: estados y utilidades para horas ocupadas ----
   const [busyIntervals, setBusyIntervals] = useState<Array<{ start: Date; end: Date }>>([]);
-  const [busyLoading, setBusyLoading] = useState(false);
-  const CALENDAR_UID = 'b6d05b30669242deaa1653441a76abce';
 
+  // Convierte '20251012T120000+0200' o '...Z' a Date
   const parseZohoLocal = (s: string) => {
     const m = s?.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})([+-]\d{4}|Z)$/);
     if (!m) return new Date(NaN);
@@ -76,30 +75,22 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
   const overlaps = (aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) =>
     aStart < bEnd && bStart < aEnd;
 
-  // slots base
-  const baseSlots = useMemo<TimeSlot[]>(() => ([
-    { id: '12:00', time: '12:00', available: true },
-    { id: '13:00', time: '13:00', available: true },
-    { id: '18:00', time: '18:00', available: true },
-  ]), []);
+  const CALENDAR_UID = 'b6d05b30669242deaa1653441a76abce';
 
-  // carga disponibilidad del día
+  // Cuando cambia la fecha, pedimos eventos del día para bloquear horas
   useEffect(() => {
     const loadBusy = async () => {
       setBusyIntervals([]);
-      setBusyLoading(true);
-      setSelectedTime(''); // resetea selección al cambiar de día
-      if (!selectedDate) { setBusyLoading(false); return; }
+      if (!selectedDate) return;
       try {
-        const res = await fetch('/api/zoho/day-events', {
+        const res = await fetch('/.netlify/functions/zoho-day-events', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ dateYMD: selectedDate, calendar_uid: CALENDAR_UID }),
         });
         const data = await res.json();
         if (!res.ok) {
-          console.error('day-events FAIL', res.status, data);
-          setBusyLoading(false);
+          console.error('zoho-day-events FAIL', res.status, data);
           return;
         }
         const intervals = (data.busy || [])
@@ -108,36 +99,12 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
         setBusyIntervals(intervals);
       } catch (e) {
         console.error(e);
-      } finally {
-        setBusyLoading(false);
       }
     };
     loadBusy();
   }, [selectedDate]);
 
-  // recalcula slots con busy
-  const getAvailableTimeSlots = (): TimeSlot[] => {
-    if (!selectedDate) return [];
-    const d = new Date(selectedDate);
-    const isSaturday = d.getDay() === 6;
-    const base = isSaturday ? [{ id: '12:00', time: '12:00', available: true }] : baseSlots;
-
-    return base.map((slot) => {
-      const start = new Date(`${selectedDate}T${slot.time}:00`);
-      const end = new Date(start.getTime() + 30 * 60 * 1000);
-      const isBusy = busyIntervals.some((b) => overlaps(start, end, b.start, b.end));
-      return { ...slot, available: slot.available && !isBusy };
-    });
-  };
-
-  // si el slot elegido pasa a ocupado tras cargar busy, lo anulamos
-  useEffect(() => {
-    if (!selectedTime || !selectedDate) return;
-    const slots = getAvailableTimeSlots();
-    const chosen = slots.find((s) => s.time === selectedTime);
-    if (chosen && !chosen.available) setSelectedTime('');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busyIntervals]);
+  // ---------------------------------------------------------
 
   const getAvailableServices = (): ServiceItem[] =>
     formData.category ? servicesByCategory[formData.category] : [];
@@ -154,14 +121,14 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
     for (let i = 0; i < 6; i++) {
       const currentDate = new Date(startOfWeek);
       currentDate.setDate(startOfWeek.getDate() + i);
-      const isPast = currentDate < new Date(today.toDateString());
+      const isPast = currentDate < todayYMD;
       weekDates.push({
         date: currentDate.toISOString().split('T')[0],
         day: currentDate.getDate(),
         month: currentDate.toLocaleDateString('es-ES', { month: 'short' }),
         weekday: currentDate.toLocaleDateString('es-ES', { weekday: 'short' }),
         fullWeekday: currentDate.toLocaleDateString('es-ES', { weekday: 'long' }),
-        isWeekend: currentDate.getDay() === 6,
+        isWeekend: false,
         isPast,
         isAvailable: !isPast,
       });
@@ -177,24 +144,35 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
   };
 
   const getWeekRange = (): string => {
-    if (currentWeekDates.length < 6) return '';
     const firstDay = currentWeekDates[0];
-    const lastDay = currentWeekDates[5];
+    const lastDay = currentWeekDates[4];
     return `${firstDay.day} ${firstDay.month} - ${lastDay.day} ${lastDay.month}`;
   };
 
+  const getAvailableTimeSlots = () => {
+    if (!selectedDate) return [];
+    const d = new Date(selectedDate);[
+      { id: '12:00', time: '12:00', available: true },
+      { id: '12:00', time: '12:00', available: true },
+      { id: '13:00', time: '13:00', available: true },
+      { id: '13:00', time: '13:00', available: true },
+      { id: '14:00', time: '14:00', available: false },
+      { id: '15:00', time: '15:00', available: false },
+      { id: '16:00', time: '16:00', available: false },
+      { id: '17:00', time: '17:00', available: false },
+      { id: '18:00', time: '18:00', available: true }
+        ];
+  };
+
   const handleDateTimeSelect = () => {
-    // Revalida por si algo cambió justo ahora
-    const slot = getAvailableTimeSlots().find(s => s.time === selectedTime);
-    if (!selectedDate || !selectedTime || !slot?.available) return;
-    setStep('fill-form');
+    if (selectedDate && selectedTime) setStep('fill-form');
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedDate || !selectedTime) return;
     const email = formData.email.trim();
-    const slot = getAvailableTimeSlots().find(s => s.time === selectedTime);
-    if (!selectedDate || !selectedTime || !email || !slot?.available) return;
+    if (!email) return; // email obligatorio
 
     setIsSubmitting(true);
     try {
@@ -211,7 +189,7 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
         attendees: [{ email, permission: 1, attendance: 1 }],
       };
 
-      const res = await fetch('/api/zoho/create-event', {
+      const res = await fetch('/.netlify/functions/zoho-create-event', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -224,6 +202,7 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
         console.error('Create event FAIL', res.status, data || text);
         throw new Error(data?.error ? JSON.stringify(data) : text);
       }
+
       setStep('confirmation');
     } catch (err) {
       console.error(err);
@@ -308,7 +287,7 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
                             key={date.date}
                             variant={selectedDate === date.date ? 'default' : 'outline'}
                             size="sm"
-                            onClick={() => setSelectedDate(date.date)}
+                            onClick={() => date.isAvailable && setSelectedDate(date.date)}
                             disabled={!date.isAvailable}
                             className={`flex flex-col h-16 sm:h-20 p-2 sm:p-3 ${
                               !date.isAvailable
@@ -332,34 +311,6 @@ export default function ScheduleCallModal({ isOpen, onClose }: ScheduleCallModal
                           <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                           Selecciona una hora
                         </h3>
-
-                        {busyLoading ? (
-                          <div className="text-xs text-muted-foreground">Comprobando disponibilidad…</div>
-                        ) : null}
-
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-                          {getAvailableTimeSlots().map((slot: TimeSlot) => {
-                            const disabled = busyLoading || !slot.available;
-                            return (
-                              <Button
-                                key={slot.id}
-                                variant="outline"
-                                size="sm"
-                                onClick={() => !disabled && setSelectedTime(slot.time)}
-                                disabled={disabled}
-                                className={`relative h-12 flex items-center justify-center transition-all duration-300 ${
-                                  disabled
-                                    ? 'opacity-40 cursor-not-allowed bg-muted'
-                                    : selectedTime === slot.time
-                                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white border-transparent shadow-lg scale-105 ring-2 ring-blue-500/20'
-                                    : 'hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-300 hover:scale-102 hover:shadow-md'
-                                }`}
-                              >
-                                <span className={selectedTime === slot.time ? 'font-semibold text-white' : ''}>{slot.time}</span>
-                              </Button>
-                            );
-                          })}
-                        </div>
                       </motion.div>
                     )}
 
