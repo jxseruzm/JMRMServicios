@@ -25,6 +25,7 @@ export default function SkillsSection() {
   const [selectedTech, setSelectedTech] = useState(null);
 
   // Información educativa de cada tecnología
+  /*
   const techDetails = {
     "PostgreSQL": {
       whatIs: "PostgreSQL es una base de datos que funciona como un almacén digital muy organizado y confiable para guardar información importante de empresas y aplicaciones.",
@@ -147,7 +148,7 @@ export default function SkillsSection() {
       keyFeatures: ["Container Orchestration", "Service Discovery", "Load Balancing", "Rolling Updates"],
       certifications: ["Certified Kubernetes Administrator (CKA)"],
       projects: "15+ implementaciones de microservicios"
-    },
+    },  
 
     "Python": {
       whatIs: "Python es un lenguaje de programación que es como el 'inglés' del mundo de la tecnología: fácil de entender y usado en todas partes.",
@@ -353,7 +354,7 @@ export default function SkillsSection() {
       analogy: "Es como tener un estudio de arquitecto digital donde puedes diseñar y organizar todos tus proyectos y conocimientos"
     }
   };
-
+  */
   const skillCategories = [
     {
       icon: Database,
@@ -365,7 +366,11 @@ export default function SkillsSection() {
       icon: Cloud,
       title: "Cloud Platforms",
       color: "text-green-600",
-      skills: ["AWS", "Google Cloud", "IBM Cloud", "Kubernetes"]
+      skills: ["AWS", 
+        //"Google Cloud", 
+        "IBM Cloud" 
+        //"Kubernetes"
+        ]
     },
     {
       icon: Code,
@@ -377,7 +382,13 @@ export default function SkillsSection() {
       icon: BarChart3,
       title: "Big Data & Analytics",
       color: "text-orange-600",
-      skills: ["Apache Spark", "Hadoop", "Kafka", "PowerBI", "RapidMiner"]
+      skills: [
+        "Apache Spark", 
+        "Hadoop", 
+        "Kafka", 
+        "PowerBI", 
+       // "RapidMiner"
+      ]
     },
     {
       icon: Server,
@@ -575,7 +586,7 @@ export default function SkillsSection() {
                   transition={{ duration: 1, delay: 0.5 }}
                   viewport={{ once: true }}
                 >
-                  30+
+                  10+
                 </motion.div>
                 <p className="text-sm text-muted-foreground font-medium">Tecnologías Dominadas</p>
               </motion.div>
@@ -640,7 +651,7 @@ export default function SkillsSection() {
           </Card>
         </div>
 
-        {/* Technology Details Modal - Informativo */}
+        {/* Technology Details Modal - Informativo */} {/*
         <Dialog open={!!selectedTech} onOpenChange={() => setSelectedTech(null)}>
           <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
             {selectedTech && (
@@ -664,7 +675,7 @@ export default function SkillsSection() {
 
                 <div className="space-y-6 mt-6">
                   
-                  {/* ¿Qué es? */}
+                  {/* ¿Qué es? */} {/*
                   <Card className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200/50">
                     <div className="flex items-start gap-3 mb-3">
                       <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/50 mt-0.5">
@@ -679,7 +690,7 @@ export default function SkillsSection() {
                     </div>
                   </Card>
 
-                  {/* ¿Por qué es importante? */}
+                  {/* ¿Por qué es importante? */} {/*
                   {selectedTech.whyImportant && (
                     <Card className="p-5 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border-green-200/50">
                       <div className="flex items-start gap-3 mb-3">
@@ -696,7 +707,7 @@ export default function SkillsSection() {
                     </Card>
                   )}
 
-                  {/* Ejemplo del mundo real */}
+                  {/* Ejemplo del mundo real */} {/*
                   {selectedTech.realWorldExample && (
                     <Card className="p-5 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 border-orange-200/50">
                       <div className="flex items-start gap-3 mb-3">
@@ -713,7 +724,7 @@ export default function SkillsSection() {
                     </Card>
                   )}
 
-                  {/* Beneficios principales */}
+                  {/* Beneficios principales */} {/*
                   {selectedTech.benefits && (
                     <Card className="p-5 bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/30 border-purple-200/50">
                       <div className="flex items-start gap-3 mb-4">
@@ -735,7 +746,7 @@ export default function SkillsSection() {
                     </Card>
                   )}
 
-                  {/* Industrias que lo usan */}
+                  {/* Industrias que lo usan */} {/*
                   {selectedTech.industries && (
                     <Card className="p-5 bg-gradient-to-br from-rose-50 to-pink-50 dark:from-rose-950/30 dark:to-pink-950/30 border-rose-200/50">
                       <div className="flex items-start gap-3 mb-4">
@@ -758,7 +769,7 @@ export default function SkillsSection() {
                     </Card>
                   )}
 
-                  {/* Analogía */}
+                  {/* Analogía */} {/*
                   {selectedTech.analogy && (
                     <Card className="p-5 bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/30 border-yellow-200/50">
                       <div className="flex items-start gap-3">
@@ -775,7 +786,7 @@ export default function SkillsSection() {
                     </Card>
                   )}
 
-                  {/* Casos de uso (fallback) */}
+                  {/* Casos de uso (fallback) */} {/*
                   {selectedTech.useCases && !selectedTech.benefits && (
                     <Card className="p-5 bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-950/30 dark:to-slate-950/30 border-gray-200/50">
                       <div className="flex items-center gap-3 mb-4">
@@ -801,7 +812,7 @@ export default function SkillsSection() {
               </>
             )}
           </DialogContent>
-        </Dialog>
+        </Dialog> */}
       </div>
     </section>
   );

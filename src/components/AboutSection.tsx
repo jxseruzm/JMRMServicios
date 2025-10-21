@@ -164,13 +164,13 @@ export default function AboutSection() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             <div className="space-y-2">
               <div className="text-2xl md:text-3xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                5+
+                3+
               </div>
               <div className="text-sm text-muted-foreground">Años de experiencia</div>
             </div>
             <div className="space-y-2">
               <div className="text-2xl md:text-3xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                50+
+                7+
               </div>
               <div className="text-sm text-muted-foreground">Proyectos completados</div>
             </div>

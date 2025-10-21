@@ -19,9 +19,9 @@ export default function Header() {
   const navLinks = [
     { href: '#inicio', label: 'Inicio', id: 'inicio' },
     { href: '#titulo-sobre-mi', label: 'Sobre Mí', id: 'titulo-sobre-mi' },
-    { href: '#titulo-servicios', label: 'Servicios', id: 'titulo-servicios' },
+    {/* href: '#titulo-servicios', label: 'Servicios', id: 'titulo-servicios' */},
     { href: '#titulo-habilidades', label: 'Habilidades', id: 'titulo-habilidades' },
-    { href: '#titulo-proyectos', label: 'Proyectos', id: 'titulo-proyectos' },
+    {/* href: '#titulo-proyectos', label: 'Proyectos', id: 'titulo-proyectos' */},
     { href: '#titulo-experiencia', label: 'Experiencia', id: 'titulo-experiencia' },
     { href: '#titulo-contacto', label: 'Contacto', id: 'titulo-contacto' }
   ];

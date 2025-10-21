@@ -70,20 +70,20 @@ export default function App() {
           <AboutSection />
         </Suspense>
 
-        {/* Services Section - Lazy loaded */}
+        {/* Services Section - Lazy loaded 
         <Suspense fallback={<SectionSkeleton />}>
           <ServicesSection />
-        </Suspense>
+        </Suspense>*/}
 
         {/* Skills Section - Lazy loaded */}
         <Suspense fallback={<SectionSkeleton />}>
           <SkillsSection />
         </Suspense>
 
-        {/* Projects Section - Lazy loaded */}
+        {/* Projects Section - Lazy loaded 
         <Suspense fallback={<SectionSkeleton />}>
           <ProjectsSection />
-        </Suspense>
+        </Suspense>*/}
 
         {/* Experience Section - Lazy loaded */}
         <Suspense fallback={<SectionSkeleton />}>

@@ -195,12 +195,22 @@ export default function HeroSection() {
               transition={{ delay: 0.8, duration: 0.6 }}
               className="flex flex-col sm:flex-row gap-4"
             >
+              {/*
               <Button 
                 size="lg" 
                 className="hero-cta-button group"
                 onClick={() => navigateToSection('titulo-servicios')}
               >
                 Ver Servicios
+                <ChevronRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              </Button>
+               */}
+              <Button 
+                size="lg" 
+                className="hero-cta-button group"
+                onClick={() => navigateToSection('titulo-sobre-mi')}
+              >
+                Este soy yo
                 <ChevronRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Button>
               <Button 
